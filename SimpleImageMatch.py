@@ -7,25 +7,16 @@ R,G,B,H,S,V,Y,U,L,A = 0,1,2,0,1,2,0,1,0,1
 LUMA_WEIGHTS = [0.299, 0.587, 0.114]
 MAX8BITNUM = np.iinfo('uint8').max
 
-def match_contrast_brightness(La, Lb):
-    # Match contrast
-    std_la = float(np.std(La))
-    std_lb = float(np.std(Lb))
-    Lb_contrast = Lb * (std_la / std_lb) if std_lb > 0 else Lb
-    # Match brightness
-    mean_la = float(np.mean(La))
-    mean_lb_contrast = float(np.mean(Lb_contrast))
-    Lb_out = Lb_contrast + (mean_la - mean_lb_contrast)
-    return Lb_out
-
-def match_color(Ca, Cb):
-    # Match color
-    mean_ca = float(np.mean(Ca))
-    mean_cb = float(np.mean(Cb))
-    difference = mean_ca - mean_cb
+def match_deviation_difference(Ch_ref, Ch_target):
+    # Match deviation
+    std_ref = float(np.std(Ch_ref))
+    std_target = float(np.std(Ch_target))
+    Ch_target_deviation = Ch_target * (std_ref / std_target) if std_target > 0 else Ch_target
     # Match difference
-    Cb_out = Cb + difference
-    return Cb_out
+    mean_ref = float(np.mean(Ch_ref))
+    mean_target_deviation = float(np.mean(Ch_target_deviation))
+    Ch_target_out = Ch_target_deviation + (mean_ref - mean_target_deviation)
+    return Ch_target_out
 
 def match_images(img_a, img_b):
     # Turn into LAB
@@ -33,10 +24,10 @@ def match_images(img_a, img_b):
     lab_b = cv.cvtColor(np.array(img_b), cv.COLOR_RGB2LAB)
     Al, Aa, Ab = lab_a[:,:,L], lab_a[:,:,A], lab_b[:,:,B]
     Bl, Ba, Bb = lab_b[:,:,L], lab_b[:,:,A], lab_b[:,:,B]
-    # Do matching
-    Bl_out = match_contrast_brightness(Al, Bl)
-    Ba_out = match_color(Aa, Ba)
-    Bb_out = match_color(Ab, Bb)
+    # Do statistical matching for contrast, brightness, color and saturation
+    Bl_out = match_deviation_difference(Al, Bl)
+    Ba_out = match_deviation_difference(Aa, Ba)
+    Bb_out = match_deviation_difference(Ab, Bb)
     # Combine back to lab_b_out
     lab_b_out = cv.merge([Bl_out, Ba_out, Bb_out])
     # Convert back to 8 bit
